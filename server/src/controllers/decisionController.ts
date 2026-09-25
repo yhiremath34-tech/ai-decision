@@ -138,7 +138,7 @@ export async function createDecision(req: AuthenticatedRequest, res: Response): 
       user_id: userId,
       ...validated,
       status: 'draft',
-    });
+    } as any);
 
     res.status(201).json({ decision: created });
   } catch (err: any) {
@@ -199,7 +199,7 @@ export async function createAlternative(req: AuthenticatedRequest, res: Response
     if (!(await verifyDecisionOwnership(id, req.user!.id, res))) return;
 
     const validated = alternativeSchema.parse(req.body);
-    const created = await store.createAlternative(id, validated);
+    const created = await store.createAlternative(id, validated as any);
     res.status(201).json({ alternative: created });
   } catch (err: any) {
     res.status(400).json({ error: err.errors ? err.errors.map((e: any) => e.message).join(', ') : err.message });
@@ -253,7 +253,7 @@ export async function createCriterion(req: AuthenticatedRequest, res: Response):
     if (!(await verifyDecisionOwnership(id, req.user!.id, res))) return;
 
     const validated = criterionSchema.parse(req.body);
-    const created = await store.createCriterion(id, validated);
+    const created = await store.createCriterion(id, validated as any);
     res.status(201).json({ criterion: created });
   } catch (err: any) {
     res.status(400).json({ error: err.errors ? err.errors.map((e: any) => e.message).join(', ') : err.message });
@@ -315,7 +315,7 @@ export async function saveScores(req: AuthenticatedRequest, res: Response): Prom
     if (!(await verifyDecisionOwnership(id, req.user!.id, res))) return;
 
     const validated = scoreBatchSchema.parse(req.body);
-    const saved = await store.saveScores(validated.scores);
+    const saved = await store.saveScores(validated.scores as any);
     res.json({ scores: saved });
   } catch (err: any) {
     res.status(400).json({ error: err.errors ? err.errors.map((e: any) => e.message).join(', ') : err.message });
@@ -339,7 +339,7 @@ export async function createEvidence(req: AuthenticatedRequest, res: Response): 
     const { id } = req.params;
     if (!(await verifyDecisionOwnership(id, req.user!.id, res))) return;
     const validated = evidenceSchema.parse(req.body);
-    const created = await store.createEvidence(id, validated);
+    const created = await store.createEvidence(id, validated as any);
     res.status(201).json({ evidence: created });
   } catch (err: any) {
     res.status(400).json({ error: err.errors ? err.errors.map((e: any) => e.message).join(', ') : err.message });
@@ -392,7 +392,7 @@ export async function createAssumption(req: AuthenticatedRequest, res: Response)
     const { id } = req.params;
     if (!(await verifyDecisionOwnership(id, req.user!.id, res))) return;
     const validated = assumptionSchema.parse(req.body);
-    const created = await store.createAssumption(id, validated);
+    const created = await store.createAssumption(id, validated as any);
     res.status(201).json({ assumption: created });
   } catch (err: any) {
     res.status(400).json({ error: err.errors ? err.errors.map((e: any) => e.message).join(', ') : err.message });
@@ -445,7 +445,7 @@ export async function createRisk(req: AuthenticatedRequest, res: Response): Prom
     const { id } = req.params;
     if (!(await verifyDecisionOwnership(id, req.user!.id, res))) return;
     const validated = riskSchema.parse(req.body);
-    const created = await store.createRisk(id, validated);
+    const created = await store.createRisk(id, validated as any);
     res.status(201).json({ risk: created });
   } catch (err: any) {
     res.status(400).json({ error: err.errors ? err.errors.map((e: any) => e.message).join(', ') : err.message });

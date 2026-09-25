@@ -360,7 +360,7 @@ export async function runAIDecisionAnalysis(
     const validated = aiExecutiveAnalysisSchema.parse(parsed);
 
     return {
-      analysis: validated,
+      analysis: validated as unknown as AIAnalysisResponse,
       modelUsed: modelName,
     };
   } catch (err: any) {

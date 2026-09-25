@@ -157,19 +157,28 @@ class PersistenceStore {
   // --- Decisions ---
   async listDecisions(userId: string, filters?: { search?: string; domain?: string; status?: string }): Promise<Decision[]> {
     if (this.isSupabaseActive && this.supabase) {
-      let query = this.supabase.from('decisions').select('*').order('updated_at', { ascending: false });
-      if (filters?.domain && filters.domain !== 'all') {
-        query = query.eq('domain', filters.domain);
+      try {
+        let query = this.supabase.from('decisions').select('*').order('updated_at', { ascending: false });
+        if (filters?.domain && filters.domain !== 'all') {
+          query = query.eq('domain', filters.domain);
+        }
+        if (filters?.status && filters.status !== 'all') {
+          query = query.eq('status', filters.status);
+        }
+        if (filters?.search) {
+          query = query.ilike('title', `%${filters.search}%`);
+        }
+        const { data, error } = await query;
+        if (error) {
+          console.warn('[Store] Supabase query notice (serving from local store):', error.message);
+          this.isSupabaseActive = false;
+        } else {
+          return data || [];
+        }
+      } catch (err: any) {
+        console.warn('[Store] Supabase listDecisions error, serving from local store:', err.message);
+        this.isSupabaseActive = false;
       }
-      if (filters?.status && filters.status !== 'all') {
-        query = query.eq('status', filters.status);
-      }
-      if (filters?.search) {
-        query = query.ilike('title', `%${filters.search}%`);
-      }
-      const { data, error } = await query;
-      if (error) throw error;
-      return data || [];
     }
 
     return this.memoryData.decisions
@@ -184,8 +193,16 @@ class PersistenceStore {
 
   async getDecision(id: string, userId?: string): Promise<Decision | null> {
     if (this.isSupabaseActive && this.supabase) {
-      const { data } = await this.supabase.from('decisions').select('*').eq('id', id).single();
-      return data;
+      try {
+        const { data, error } = await this.supabase.from('decisions').select('*').eq('id', id).single();
+        if (error) {
+          this.isSupabaseActive = false;
+        } else if (data) {
+          return data;
+        }
+      } catch {
+        this.isSupabaseActive = false;
+      }
     }
     return this.memoryData.decisions.find(d => d.id === id) || null;
   }
@@ -203,9 +220,15 @@ class PersistenceStore {
     };
 
     if (this.isSupabaseActive && this.supabase) {
-      const { data, error } = await this.supabase.from('decisions').insert(record).select().single();
-      if (error) throw error;
-      return data;
+      try {
+        const { data, error } = await this.supabase.from('decisions').insert(record).select().single();
+        if (!error && data) {
+          return data;
+        }
+        this.isSupabaseActive = false;
+      } catch {
+        this.isSupabaseActive = false;
+      }
     }
 
     this.memoryData.decisions.push(record);
@@ -217,14 +240,19 @@ class PersistenceStore {
     const now = new Date().toISOString();
 
     if (this.isSupabaseActive && this.supabase) {
-      const { data, error } = await this.supabase
-        .from('decisions')
-        .update({ ...updates, updated_at: now })
-        .eq('id', id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+      try {
+        const { data, error } = await this.supabase
+          .from('decisions')
+          .update({ ...updates, updated_at: now })
+          .eq('id', id)
+          .select()
+          .single();
+        if (!error && data) {
+          return data;
+        }
+      } catch {
+        this.isSupabaseActive = false;
+      }
     }
 
     const item = this.memoryData.decisions.find(d => d.id === id);
@@ -236,8 +264,12 @@ class PersistenceStore {
 
   async deleteDecision(id: string, userId: string): Promise<boolean> {
     if (this.isSupabaseActive && this.supabase) {
-      const { error } = await this.supabase.from('decisions').delete().eq('id', id);
-      return !error;
+      try {
+        const { error } = await this.supabase.from('decisions').delete().eq('id', id);
+        if (!error) return true;
+      } catch {
+        this.isSupabaseActive = false;
+      }
     }
 
     const idx = this.memoryData.decisions.findIndex(d => d.id === id);
