@@ -14,19 +14,9 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button.js';
-import { useAuth } from '../context/AuthContext.js';
 
 export const LandingPage: React.FC = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
-
-  const handleDemoAccess = () => {
-    if (user) {
-      navigate('/dashboard');
-    } else {
-      navigate('/login');
-    }
-  };
 
   return (
     <div className="min-h-screen bg-slate-900 text-white selection:bg-brand-500 selection:text-white">
@@ -41,26 +31,11 @@ export const LandingPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            {user ? (
-              <Link to="/dashboard">
-                <Button variant="primary" size="sm" icon={<ArrowRight className="w-4 h-4" />}>
-                  Enter Dashboard
-                </Button>
-              </Link>
-            ) : (
-              <>
-                <Link to="/login">
-                  <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white">
-                    Sign In
-                  </Button>
-                </Link>
-                <Link to="/register">
-                  <Button variant="primary" size="sm">
-                    Get Started Free
-                  </Button>
-                </Link>
-              </>
-            )}
+            <Link to="/dashboard">
+              <Button variant="primary" size="sm" icon={<ArrowRight className="w-4 h-4" />}>
+                Launch Platform
+              </Button>
+            </Link>
           </div>
         </div>
       </nav>
@@ -70,9 +45,9 @@ export const LandingPage: React.FC = () => {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-brand-600/20 via-slate-900/0 to-slate-900 pointer-events-none" />
 
         <div className="max-w-5xl mx-auto text-center space-y-8 relative z-10">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-500/10 border border-brand-500/30 text-brand-300 text-xs font-semibold animate-pulse">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-500/10 border border-brand-500/30 text-brand-300 text-xs font-semibold">
             <Sparkles className="w-3.5 h-3.5 text-brand-400" />
-            <span>AI-Powered Decision Intelligence Platform</span>
+            <span>Instant Open Access — No Login or Account Needed</span>
           </div>
 
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-[1.1]">
@@ -90,123 +65,76 @@ export const LandingPage: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
             <Button
               size="lg"
-              onClick={handleDemoAccess}
+              onClick={() => navigate('/dashboard')}
               icon={<ArrowRight className="w-5 h-5" />}
               className="w-full sm:w-auto text-base px-8 py-3 shadow-lg shadow-brand-500/30"
             >
               Start Analyzing Decisions
             </Button>
-            <Link to="/register" className="w-full sm:w-auto">
+            <Link to="/decisions/new" className="w-full sm:w-auto">
               <Button variant="outline" size="lg" className="w-full sm:w-auto border-slate-700 text-slate-200 hover:bg-slate-800">
-                Create Free Account
+                Create New Decision
               </Button>
             </Link>
           </div>
 
-          {/* Social Proof / Security Badges */}
+          {/* Value Badges */}
           <div className="pt-8 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-400">
             <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>Row-Level Data Isolation</span>
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <span>Instant Access — Zero Setup</span>
             </div>
             <div className="flex items-center gap-2">
               <UserCheck className="w-4 h-4 text-brand-400" />
               <span>Human-in-the-Loop Authority</span>
             </div>
             <div className="flex items-center gap-2">
-              <Lock className="w-4 h-4 text-sky-400" />
-              <span>Supabase PostgreSQL + JWT Auth</span>
+              <Cpu className="w-4 h-4 text-sky-400" />
+              <span>Deterministic MCDA + Gemini AI</span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* The Core Decision-Support Manifesto */}
-      <section className="py-16 px-6 bg-slate-950/60 border-y border-slate-800">
-        <div className="max-w-5xl mx-auto text-center space-y-6">
-          <span className="text-xs font-bold uppercase tracking-wider text-brand-400">
-            The DecisionFlow Principle
-          </span>
-          <blockquote className="text-xl sm:text-2xl font-semibold text-slate-200 italic max-w-4xl mx-auto leading-relaxed">
-            "Given the information, objectives, constraints, alternatives, and risks provided by the user, what does the structured analysis indicate, why does it indicate it, and what information could change the result?"
-          </blockquote>
-          <p className="text-sm text-slate-400 max-w-2xl mx-auto">
-            The system does not blindly make decisions for you. The AI acts as an objective analytical advisor, clearly separating facts, user assumptions, derived calculations, trade-offs, and uncertainty.
-          </p>
-        </div>
-      </section>
-
-      {/* 6 Key Capabilities Grid */}
-      <section className="py-24 px-6 max-w-7xl mx-auto space-y-16">
-        <div className="text-center space-y-3">
-          <span className="text-xs font-bold uppercase tracking-wider text-brand-400">Engine Architecture</span>
-          <h2 className="text-3xl sm:text-4xl font-black text-white">
-            Built for rigorous, explainable evaluation
-          </h2>
-          <p className="text-sm text-slate-400 max-w-xl mx-auto">
-            Combining multi-criteria decision analysis (MCDA), quantitative risk modeling, and Gemini reasoning.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <div className="p-6 rounded-2xl bg-slate-800/50 border border-slate-700/60 space-y-3 hover:border-slate-600 transition-colors">
-            <div className="w-10 h-10 rounded-xl bg-brand-500/20 text-brand-400 flex items-center justify-center">
-              <BarChart3 className="w-5 h-5" />
+      {/* Problem vs Solution Split */}
+      <section className="py-20 px-6 bg-slate-950/60 border-t border-slate-800">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+          <div className="space-y-6">
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-400">The Problem</span>
+            <h2 className="text-3xl font-extrabold text-white">Why critical choices fail in modern teams</h2>
+            <div className="space-y-4 text-slate-400 text-sm">
+              <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-start gap-3">
+                <span className="text-rose-400 font-bold">✕</span>
+                <p><strong className="text-slate-200">Unexamined Assumptions:</strong> Critical bets made on unvalidated premises without explicit confidence ratings.</p>
+              </div>
+              <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-start gap-3">
+                <span className="text-rose-400 font-bold">✕</span>
+                <p><strong className="text-slate-200">Hidden Trade-offs:</strong> Selecting an alternative for low upfront cost while ignoring astronomical maintenance effort.</p>
+              </div>
+              <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-start gap-3">
+                <span className="text-rose-400 font-bold">✕</span>
+                <p><strong className="text-slate-200">Black-Box AI Recommendations:</strong> Unexplainable LLM advice that executives cannot audit or defend to boards.</p>
+              </div>
             </div>
-            <h3 className="text-lg font-bold text-white">Multi-Criteria Decision Matrix</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Deterministic normalization formulas (higher-better, lower-better, target-value) with 100% weight rebalancing and transparent score contributions.
-            </p>
           </div>
 
-          <div className="p-6 rounded-2xl bg-slate-800/50 border border-slate-700/60 space-y-3 hover:border-slate-600 transition-colors">
-            <div className="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5" />
+          <div className="space-y-6">
+            <span className="text-xs font-bold uppercase tracking-wider text-brand-400">The DecisionFlow Solution</span>
+            <h2 className="text-3xl font-extrabold text-white">Mathematical rigor paired with explainable AI</h2>
+            <div className="space-y-4 text-slate-300 text-sm">
+              <div className="p-4 rounded-xl bg-brand-950/40 border border-brand-800/50 flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                <p><strong className="text-white">Deterministic MCDA Engine:</strong> Pure math normalizes criteria weights and scores with zero hallucination.</p>
+              </div>
+              <div className="p-4 rounded-xl bg-brand-950/40 border border-brand-800/50 flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                <p><strong className="text-white">5×5 Risk Heat Matrix:</strong> Explicit probability and impact scoring per alternative.</p>
+              </div>
+              <div className="p-4 rounded-xl bg-brand-950/40 border border-brand-800/50 flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                <p><strong className="text-white">Auditable Rationale & Dossiers:</strong> Print-ready dossiers capturing human rationale and irreversible decision timestamps.</p>
+              </div>
             </div>
-            <h3 className="text-lg font-bold text-white">5×5 Quantitative Risk Register</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Evaluate probability (1-5) and impact (1-5) to calculate risk severity scores (1-25) and establish mitigation strategies per alternative.
-            </p>
-          </div>
-
-          <div className="p-6 rounded-2xl bg-slate-800/50 border border-slate-700/60 space-y-3 hover:border-slate-600 transition-colors">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center">
-              <Cpu className="w-5 h-5" />
-            </div>
-            <h3 className="text-lg font-bold text-white">Gemini 2.5 Explainable AI</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Strictly validated JSON synthesis explaining why an alternative was chosen, its key weaknesses, trade-offs, and critical assumptions.
-            </p>
-          </div>
-
-          <div className="p-6 rounded-2xl bg-slate-800/50 border border-slate-700/60 space-y-3 hover:border-slate-600 transition-colors">
-            <div className="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center">
-              <Sliders className="w-5 h-5" />
-            </div>
-            <h3 className="text-lg font-bold text-white">Real-Time Sensitivity Simulator</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Drag interactive weight sliders to observe outcome stability and immediately identify which criteria could trigger a ranking flip.
-            </p>
-          </div>
-
-          <div className="p-6 rounded-2xl bg-slate-800/50 border border-slate-700/60 space-y-3 hover:border-slate-600 transition-colors">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
-              <HelpCircle className="w-5 h-5" />
-            </div>
-            <h3 className="text-lg font-bold text-white">Evidence & Assumption Tracking</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Explicitly catalogue empirical evidence with reliability ratings, separating verified data from user assumptions and subjective estimates.
-            </p>
-          </div>
-
-          <div className="p-6 rounded-2xl bg-slate-800/50 border border-slate-700/60 space-y-3 hover:border-slate-600 transition-colors">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-              <FileText className="w-5 h-5" />
-            </div>
-            <h3 className="text-lg font-bold text-white">Print-Ready Executive Reports</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Generate structured, audit-ready decision intelligence dossiers complete with executive summaries, matrices, and formal human rationales.
-            </p>
           </div>
         </div>
       </section>
@@ -248,10 +176,10 @@ export const LandingPage: React.FC = () => {
           Ready to make your next high-stakes decision?
         </h3>
         <p className="text-sm text-slate-400 max-w-md mx-auto">
-          Start for free today with DecisionFlow's explainable analytical platform.
+          Instant open access with DecisionFlow's explainable analytical platform.
         </p>
-        <Button size="lg" onClick={handleDemoAccess} icon={<ArrowRight className="w-5 h-5" />}>
-          Get Started Now
+        <Button size="lg" onClick={() => navigate('/dashboard')} icon={<ArrowRight className="w-5 h-5" />}>
+          Open Platform
         </Button>
         <div className="pt-8 text-xs text-slate-500">
           DecisionFlow © {new Date().getFullYear()} — Turn complex data into confident decisions.

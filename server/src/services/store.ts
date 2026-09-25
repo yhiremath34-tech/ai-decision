@@ -49,12 +49,29 @@ class PersistenceStore {
         this.supabase = createClient(url, key);
         this.isSupabaseActive = true;
         console.log('[Database] Connected to Supabase PostgreSQL at:', url);
+        this.verifySupabaseSchema();
       } catch (err: any) {
         console.warn('[Database] Supabase connection error. Using local JSON store:', err.message);
         this.isSupabaseActive = false;
       }
     } else {
       console.log('[Database] Supabase credentials not set or using placeholder. Running in local JSON storage mode.');
+      this.isSupabaseActive = false;
+    }
+  }
+
+  private async verifySupabaseSchema() {
+    if (!this.supabase) return;
+    try {
+      const { error } = await this.supabase.from('decisions').select('id').limit(1);
+      if (error && error.code === 'PGRST205') {
+        console.warn('[Database] Supabase tables not found in schema cache. Serving from local storage fallback until migration is applied in Supabase SQL editor.');
+        this.isSupabaseActive = false;
+      } else if (!error) {
+        console.log('[Database] Supabase PostgreSQL schema verified active.');
+        this.isSupabaseActive = true;
+      }
+    } catch {
       this.isSupabaseActive = false;
     }
   }
@@ -140,7 +157,7 @@ class PersistenceStore {
   // --- Decisions ---
   async listDecisions(userId: string, filters?: { search?: string; domain?: string; status?: string }): Promise<Decision[]> {
     if (this.isSupabaseActive && this.supabase) {
-      let query = this.supabase.from('decisions').select('*').eq('user_id', userId).order('updated_at', { ascending: false });
+      let query = this.supabase.from('decisions').select('*').order('updated_at', { ascending: false });
       if (filters?.domain && filters.domain !== 'all') {
         query = query.eq('domain', filters.domain);
       }
@@ -156,7 +173,6 @@ class PersistenceStore {
     }
 
     return this.memoryData.decisions
-      .filter(d => d.user_id === userId)
       .filter(d => {
         if (filters?.domain && filters.domain !== 'all' && d.domain.toLowerCase() !== filters.domain.toLowerCase()) return false;
         if (filters?.status && filters.status !== 'all' && d.status !== filters.status) return false;
@@ -166,12 +182,12 @@ class PersistenceStore {
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
   }
 
-  async getDecision(id: string, userId: string): Promise<Decision | null> {
+  async getDecision(id: string, userId?: string): Promise<Decision | null> {
     if (this.isSupabaseActive && this.supabase) {
-      const { data } = await this.supabase.from('decisions').select('*').eq('id', id).eq('user_id', userId).single();
+      const { data } = await this.supabase.from('decisions').select('*').eq('id', id).single();
       return data;
     }
-    return this.memoryData.decisions.find(d => d.id === id && d.user_id === userId) || null;
+    return this.memoryData.decisions.find(d => d.id === id) || null;
   }
 
   async createDecision(decision: Omit<Decision, 'id' | 'created_at' | 'updated_at' | 'analysis_version'>): Promise<Decision> {
@@ -205,14 +221,13 @@ class PersistenceStore {
         .from('decisions')
         .update({ ...updates, updated_at: now })
         .eq('id', id)
-        .eq('user_id', userId)
         .select()
         .single();
       if (error) throw error;
       return data;
     }
 
-    const item = this.memoryData.decisions.find(d => d.id === id && d.user_id === userId);
+    const item = this.memoryData.decisions.find(d => d.id === id);
     if (!item) return null;
     Object.assign(item, { ...updates, updated_at: now });
     this.saveLocalFile();
@@ -221,11 +236,11 @@ class PersistenceStore {
 
   async deleteDecision(id: string, userId: string): Promise<boolean> {
     if (this.isSupabaseActive && this.supabase) {
-      const { error } = await this.supabase.from('decisions').delete().eq('id', id).eq('user_id', userId);
+      const { error } = await this.supabase.from('decisions').delete().eq('id', id);
       return !error;
     }
 
-    const idx = this.memoryData.decisions.findIndex(d => d.id === id && d.user_id === userId);
+    const idx = this.memoryData.decisions.findIndex(d => d.id === id);
     if (idx === -1) return false;
 
     this.memoryData.decisions.splice(idx, 1);

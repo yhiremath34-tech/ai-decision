@@ -1,14 +1,11 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext.js';
+import { AuthProvider } from './context/AuthContext.js';
 import { ToastProvider } from './context/ToastContext.js';
 import { AppLayout } from './components/layout/AppLayout.js';
-import { Spinner } from './components/ui/Spinner.js';
 
 // Pages
 import { LandingPage } from './pages/LandingPage.js';
-import { LoginPage } from './pages/LoginPage.js';
-import { RegisterPage } from './pages/RegisterPage.js';
 import { DashboardPage } from './pages/DashboardPage.js';
 import { DecisionListPage } from './pages/DecisionListPage.js';
 import { DecisionNewPage } from './pages/DecisionNewPage.js';
@@ -23,43 +20,21 @@ import { DecisionResultsPage } from './pages/DecisionResultsPage.js';
 import { DecisionReportPage } from './pages/DecisionReportPage.js';
 import { SettingsPage } from './pages/SettingsPage.js';
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="h-screen w-screen flex items-center justify-center bg-slate-900 text-white">
-        <Spinner size="lg" text="Authenticating..." />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return <>{children}</>;
-};
-
 export const App: React.FC = () => {
   return (
     <BrowserRouter>
       <AuthProvider>
         <ToastProvider>
           <Routes>
-            {/* Public Routes */}
+            {/* Landing Page */}
             <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
 
-            {/* Protected Workspace Routes */}
-            <Route
-              element={
-                <ProtectedRoute>
-                  <AppLayout />
-                </ProtectedRoute>
-              }
-            >
+            {/* Direct Redirects: No accounts or login needed */}
+            <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/register" element={<Navigate to="/dashboard" replace />} />
+
+            {/* Direct Open Workspace Routes */}
+            <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/decisions" element={<DecisionListPage />} />
               <Route path="/decisions/new" element={<DecisionNewPage />} />
@@ -76,7 +51,7 @@ export const App: React.FC = () => {
             </Route>
 
             {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </ToastProvider>
       </AuthProvider>

@@ -1,5 +1,5 @@
 -- ==============================================================================
--- DECISIONFLOW: PRODUCTION POSTGRESQL SCHEMA WITH ROW LEVEL SECURITY (RLS)
+-- DECISIONFLOW: PRODUCTION POSTGRESQL SCHEMA (OPEN ACCESS / NO LOGIN REQUIRED)
 -- ==============================================================================
 
 -- 1. EXTENSIONS
@@ -7,7 +7,7 @@ create extension if not exists pgcrypto;
 
 -- 2. PROFILES TABLE
 create table if not exists public.profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
+  id uuid primary key default gen_random_uuid(),
   full_name text,
   avatar_url text,
   created_at timestamptz not null default now(),
@@ -17,7 +17,7 @@ create table if not exists public.profiles (
 -- 3. DECISIONS TABLE
 create table if not exists public.decisions (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid not null default '00000000-0000-0000-0000-000000000001'::uuid,
   title text not null,
   decision_question text not null,
   description text,
@@ -58,11 +58,10 @@ create table if not exists public.criteria (
   direction text not null,
   unit text,
   target_value numeric,
-  min_value numeric,
-  max_value numeric,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint criteria_weight_valid check (weight >= 0 and weight <= 100)
+  constraint criteria_weight_check check (weight >= 0 and weight <= 100),
+  constraint criteria_direction_check check (direction in ('higher_better', 'lower_better', 'target_value'))
 );
 
 -- 6. ALTERNATIVE SCORES TABLE
@@ -70,13 +69,15 @@ create table if not exists public.alternative_scores (
   id uuid primary key default gen_random_uuid(),
   alternative_id uuid not null references public.alternatives(id) on delete cascade,
   criterion_id uuid not null references public.criteria(id) on delete cascade,
-  raw_value numeric,
-  qualitative_value text,
-  normalized_score numeric,
-  weighted_score numeric,
+  raw_value numeric not null,
+  normalized_score numeric not null default 0,
+  weighted_score numeric not null default 0,
+  confidence numeric not null default 80,
+  notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique(alternative_id, criterion_id)
+  constraint alternative_scores_confidence_check check (confidence >= 0 and confidence <= 100),
+  constraint unique_alternative_criterion unique (alternative_id, criterion_id)
 );
 
 -- 7. EVIDENCE TABLE
@@ -86,84 +87,87 @@ create table if not exists public.evidence (
   alternative_id uuid references public.alternatives(id) on delete set null,
   criterion_id uuid references public.criteria(id) on delete set null,
   title text not null,
-  evidence_type text not null,
-  source text,
-  description text not null,
-  reliability numeric,
-  evidence_date date,
+  source_type text not null,
+  content text not null,
+  url text,
+  reliability_score numeric not null default 80,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint evidence_reliability_valid
-    check (reliability is null or (reliability >= 0 and reliability <= 100))
+  constraint evidence_reliability_check check (reliability_score >= 0 and reliability_score <= 100)
 );
 
 -- 8. ASSUMPTIONS TABLE
 create table if not exists public.assumptions (
   id uuid primary key default gen_random_uuid(),
   decision_id uuid not null references public.decisions(id) on delete cascade,
-  name text not null,
-  value text not null,
-  unit text,
-  confidence numeric,
-  source text,
+  description text not null,
+  impact_level text not null default 'medium',
+  confidence_level numeric not null default 75,
+  validation_status text not null default 'unverified',
   notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint assumptions_confidence_valid
-    check (confidence is null or (confidence >= 0 and confidence <= 100))
+  constraint assumptions_confidence_check check (confidence_level >= 0 and confidence_level <= 100)
 );
 
--- 9. RISKS TABLE
+-- 9. RISKS TABLE (WITH STORED GENERATED RISK SCORE)
 create table if not exists public.risks (
   id uuid primary key default gen_random_uuid(),
   decision_id uuid not null references public.decisions(id) on delete cascade,
   alternative_id uuid references public.alternatives(id) on delete cascade,
-  name text not null,
+  title text not null,
   description text,
   probability integer not null,
   impact integer not null,
   risk_score integer generated always as (probability * impact) stored,
-  mitigation text,
-  owner text,
+  mitigation_strategy text,
+  residual_probability integer,
+  residual_impact integer,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint risk_probability_valid check (probability between 1 and 5),
-  constraint risk_impact_valid check (impact between 1 and 5)
+  constraint risks_probability_check check (probability >= 1 and probability <= 5),
+  constraint risks_impact_check check (impact >= 1 and impact <= 5),
+  constraint risks_residual_prob_check check (residual_probability is null or (residual_probability >= 1 and residual_probability <= 5)),
+  constraint risks_residual_impact_check check (residual_impact is null or (residual_impact >= 1 and residual_impact <= 5))
 );
 
 -- 10. ANALYSES TABLE
 create table if not exists public.analyses (
   id uuid primary key default gen_random_uuid(),
   decision_id uuid not null references public.decisions(id) on delete cascade,
-  version integer not null,
-  overall_score numeric,
-  recommendation text,
-  recommendation_confidence numeric,
-  executive_summary text,
-  ai_response jsonb,
-  calculation_snapshot jsonb not null,
-  model_name text,
-  created_at timestamptz not null default now(),
-  unique(decision_id, version)
+  version integer not null default 1,
+  ai_model text not null,
+  recommended_alternative_id uuid references public.alternatives(id) on delete set null,
+  executive_summary text not null,
+  recommendation_rationale text not null,
+  key_tradeoffs jsonb not null default '[]'::jsonb,
+  sensitivity_summary text,
+  ranked_results jsonb not null default '[]'::jsonb,
+  explainability jsonb not null default '{}'::jsonb,
+  confidence_score numeric not null default 85,
+  created_at timestamptz not null default now()
 );
 
 -- 11. SENSITIVITY RUNS TABLE
 create table if not exists public.sensitivity_runs (
   id uuid primary key default gen_random_uuid(),
   decision_id uuid not null references public.decisions(id) on delete cascade,
-  base_analysis_id uuid references public.analyses(id) on delete cascade,
-  weight_changes jsonb not null,
-  result jsonb not null,
-  stability text,
+  scenario_name text not null,
+  weight_adjustments jsonb not null default '{}'::jsonb,
+  resulting_ranks jsonb not null default '[]'::jsonb,
+  winner_changed boolean not null default false,
+  new_recommended_id uuid references public.alternatives(id) on delete set null,
   created_at timestamptz not null default now()
 );
 
--- 12. FINAL DECISIONS TABLE
+-- 12. FINAL DECISIONS TABLE (HUMAN IN THE LOOP)
 create table if not exists public.final_decisions (
   id uuid primary key default gen_random_uuid(),
   decision_id uuid not null unique references public.decisions(id) on delete cascade,
-  selected_alternative_id uuid references public.alternatives(id) on delete set null,
-  rationale text,
+  selected_alternative_id uuid not null references public.alternatives(id) on delete restrict,
+  human_rationale text not null,
+  deviated_from_ai boolean not null default false,
+  deviation_reason text,
+  decided_by text not null default 'Decision Maker',
   decided_at timestamptz not null default now()
 );
 
@@ -217,22 +221,7 @@ create or replace trigger set_risks_updated_at
   before update on public.risks
   for each row execute function public.set_current_timestamp_updated_at();
 
--- 15. USER CREATION TRIGGER FOR PROFILES
-create or replace function public.handle_new_user()
-returns trigger as $$
-begin
-  insert into public.profiles (id, full_name, avatar_url)
-  values (new.id, coalesce(new.raw_user_meta_data->>'full_name', new.email), new.raw_user_meta_data->>'avatar_url');
-  return new;
-end;
-$$ language plpgsql security definer;
-
-drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute procedure public.handle_new_user();
-
--- 16. ROW LEVEL SECURITY (RLS) POLICIES
+-- 15. ROW LEVEL SECURITY (RLS) POLICIES — OPEN ACCESS (NO LOGIN REQUIRED)
 alter table public.profiles enable row level security;
 alter table public.decisions enable row level security;
 alter table public.alternatives enable row level security;
@@ -245,82 +234,32 @@ alter table public.analyses enable row level security;
 alter table public.sensitivity_runs enable row level security;
 alter table public.final_decisions enable row level security;
 
--- Profiles: Users can view and edit their own profile
-create policy "Users can view own profile" on public.profiles
-  for select using (auth.uid() = id);
+-- Drop any previous restrictive policies if they exist
+drop policy if exists "Users can view own profile" on public.profiles;
+drop policy if exists "Users can update own profile" on public.profiles;
+drop policy if exists "Users can view own decisions" on public.decisions;
+drop policy if exists "Users can create own decisions" on public.decisions;
+drop policy if exists "Users can update own decisions" on public.decisions;
+drop policy if exists "Users can delete own decisions" on public.decisions;
+drop policy if exists "Users can access alternatives of own decisions" on public.alternatives;
+drop policy if exists "Users can access criteria of own decisions" on public.criteria;
+drop policy if exists "Users can access scores of own decisions" on public.alternative_scores;
+drop policy if exists "Users can access evidence of own decisions" on public.evidence;
+drop policy if exists "Users can access assumptions of own decisions" on public.assumptions;
+drop policy if exists "Users can access risks of own decisions" on public.risks;
+drop policy if exists "Users can access analyses of own decisions" on public.analyses;
+drop policy if exists "Users can access sensitivity runs of own decisions" on public.sensitivity_runs;
+drop policy if exists "Users can access final decisions of own decisions" on public.final_decisions;
 
-create policy "Users can update own profile" on public.profiles
-  for update using (auth.uid() = id);
-
--- Decisions: Users can CRUD only their own decisions
-create policy "Users can view own decisions" on public.decisions
-  for select using (auth.uid() = user_id);
-
-create policy "Users can create own decisions" on public.decisions
-  for insert with check (auth.uid() = user_id);
-
-create policy "Users can update own decisions" on public.decisions
-  for update using (auth.uid() = user_id);
-
-create policy "Users can delete own decisions" on public.decisions
-  for delete using (auth.uid() = user_id);
-
--- Child tables: Ownership enforced through decisions.user_id = auth.uid()
-
--- Alternatives
-create policy "Users can access alternatives of own decisions" on public.alternatives
-  for all using (
-    exists (select 1 from public.decisions where id = alternatives.decision_id and user_id = auth.uid())
-  );
-
--- Criteria
-create policy "Users can access criteria of own decisions" on public.criteria
-  for all using (
-    exists (select 1 from public.decisions where id = criteria.decision_id and user_id = auth.uid())
-  );
-
--- Alternative Scores
-create policy "Users can access scores of own decisions" on public.alternative_scores
-  for all using (
-    exists (
-      select 1 from public.alternatives a
-      join public.decisions d on d.id = a.decision_id
-      where a.id = alternative_scores.alternative_id and d.user_id = auth.uid()
-    )
-  );
-
--- Evidence
-create policy "Users can access evidence of own decisions" on public.evidence
-  for all using (
-    exists (select 1 from public.decisions where id = evidence.decision_id and user_id = auth.uid())
-  );
-
--- Assumptions
-create policy "Users can access assumptions of own decisions" on public.assumptions
-  for all using (
-    exists (select 1 from public.decisions where id = assumptions.decision_id and user_id = auth.uid())
-  );
-
--- Risks
-create policy "Users can access risks of own decisions" on public.risks
-  for all using (
-    exists (select 1 from public.decisions where id = risks.decision_id and user_id = auth.uid())
-  );
-
--- Analyses
-create policy "Users can access analyses of own decisions" on public.analyses
-  for all using (
-    exists (select 1 from public.decisions where id = analyses.decision_id and user_id = auth.uid())
-  );
-
--- Sensitivity Runs
-create policy "Users can access sensitivity runs of own decisions" on public.sensitivity_runs
-  for all using (
-    exists (select 1 from public.decisions where id = sensitivity_runs.decision_id and user_id = auth.uid())
-  );
-
--- Final Decisions
-create policy "Users can access final decisions of own decisions" on public.final_decisions
-  for all using (
-    exists (select 1 from public.decisions where id = final_decisions.decision_id and user_id = auth.uid())
-  );
+-- Allow unrestricted access so anyone can create, read, update and delete decisions without an account
+create policy "Allow all on profiles" on public.profiles for all using (true) with check (true);
+create policy "Allow all on decisions" on public.decisions for all using (true) with check (true);
+create policy "Allow all on alternatives" on public.alternatives for all using (true) with check (true);
+create policy "Allow all on criteria" on public.criteria for all using (true) with check (true);
+create policy "Allow all on alternative_scores" on public.alternative_scores for all using (true) with check (true);
+create policy "Allow all on evidence" on public.evidence for all using (true) with check (true);
+create policy "Allow all on assumptions" on public.assumptions for all using (true) with check (true);
+create policy "Allow all on risks" on public.risks for all using (true) with check (true);
+create policy "Allow all on analyses" on public.analyses for all using (true) with check (true);
+create policy "Allow all on sensitivity_runs" on public.sensitivity_runs for all using (true) with check (true);
+create policy "Allow all on final_decisions" on public.final_decisions for all using (true) with check (true);
