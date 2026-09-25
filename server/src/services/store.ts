@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import fs from 'fs';
 import path from 'path';
